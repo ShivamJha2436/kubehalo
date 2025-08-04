@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubehalo-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubehalo-controller
+  template:
+    metadata:
+      labels:
+        app: kubehalo-controller
+    spec:
+      serviceAccountName: kubehalo-sa
+      containers:
+        - name: controller
+          image: your-dockerhub-username/kubehalo:latest
+          imagePullPolicy: Always
+          command: ["/controller"]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"

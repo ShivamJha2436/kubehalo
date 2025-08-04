@@ -1,4 +1,4 @@
-package controller
+package main
 
 import (
 	"log"
@@ -11,28 +11,22 @@ import (
 )
 
 func main() {
-	// Step 1: Create Kubernetes client (works both inside and outside the cluster)
 	clientset, err := kube.NewClient()
 	if err != nil {
-		log.Fatalf("[Startup Error] Failed to create Kubernetes client: %v", err)
+		log.Fatalf("Error building k8s client: %v", err)
 	}
 
-	// Step 2: Create a channel to handle graceful shutdowns
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 
-	// Step 3: Start the controller loop for ScalePolicy
-	err = scalepolicy.StartController(clientset, stopCh)
-	if err != nil {
-		log.Fatalf("[Startup Error] Failed to start ScalePolicy controller: %v", err)
+	if err := scalepolicy.StartController(clientset, stopCh); err != nil {
+		log.Fatalf("Controller failed: %v", err)
 	}
 
-	log.Println("[INFO] ScalePolicy controller started successfully")
+	log.Println("[MAIN] Controller is running. Press Ctrl+C to stop...")
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	<-sigCh
 
-	// Step 4: Wait for OS signals to shut down gracefully
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs // blocking until signal is received
-
-	log.Println("[INFO] Received termination signal, shutting down...")
-	close(stopCh)
+	log.Println("[MAIN] Shutting down gracefully...")
 }

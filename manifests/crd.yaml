@@ -1,0 +1,42 @@
+---
+# CRD
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: scalepolicies.kubehalo.sh
+# reuse same as config/crd/scale_policy.yaml
+
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubehalo-sa
+  namespace: kube-system
+
+---
+# Role (minimal RBAC)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: kube-system
+  name: kubehalo-role
+rules:
+  - apiGroups: ["", "apps", "kubehalo.sh"]
+    resources: ["deployments", "scalepolicies"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubehalo-rolebinding
+  namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: kubehalo-sa
+roleRef:
+  kind: Role
+  name: kubehalo-role
+  apiGroup: rbac.authorization.k8s.io
