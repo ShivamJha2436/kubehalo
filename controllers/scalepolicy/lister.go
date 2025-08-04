@@ -1,34 +1,25 @@
 package scalepolicy
 
 import (
-	"log"
-	"sync"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-
-	v1 "kubehalo/api/v1"
+	scalev1 "github.com/ShivamJha2436/kubehalo/api/v1"
+	informers "github.com/ShivamJha2436/kubehalo/generated/informers/externalversions/kubehalo/v1"
+	listers "github.com/ShivamJha2436/kubehalo/generated/listers/kubehalo/v1"
 )
 
-var (
-	scalePolicyCache = make(map[string]v1.ScalePolicy)
-	mu               sync.RWMutex
-)
-
-func StartScalePolicyInformer(clientset *kubernetes.Clientset, stopCh <-chan struct{}) {
-	// TODO: Use dynamic client / generated CRD client
-	log.Println("[INFORMER] Starting ScalePolicy informer...")
-
-	// Dummy: In real implementation, this will watch CRD changes
+type ScalePolicyLister struct {
+	lister listers.ScalePolicyLister
 }
 
-func GetCurrentScalePolicies() []v1.ScalePolicy {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	var list []v1.ScalePolicy
-	for _, p := range scalePolicyCache {
-		list = append(list, p)
+func NewScalePolicyLister(informer informers.ScalePolicyInformer) *ScalePolicyLister {
+	return &ScalePolicyLister{
+		lister: informer.Lister(),
 	}
-	return list
+}
+
+func (s *ScalePolicyLister) ListAll() ([]*scalev1.ScalePolicy, error) {
+	return s.lister.List(nil)
+}
+
+func (s *ScalePolicyLister) Get(namespace, name string) (*scalev1.ScalePolicy, error) {
+	return s.lister.ScalePolicies(namespace).Get(name)
 }

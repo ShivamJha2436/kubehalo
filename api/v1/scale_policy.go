@@ -6,22 +6,33 @@ import (
 
 // ScalePolicySpec defines the desired state of ScalePolicy
 type ScalePolicySpec struct {
-	TargetDeployment string `json:"targetDeployment"`
-	TargetNamespace  string `json:"targetNamespace"`
-	MetricQuery      string `json:"metricQuery"`
-	Thresholds       struct {
-		ScaleUp   float64 `json:"scaleUp"`
-		ScaleDown float64 `json:"scaleDown"`
-	} `json:"thresholds"`
+	DeploymentName string `json:"deploymentName"`
+	Namespace      string `json:"namespace"`
+	MinReplicas    int32  `json:"minReplicas"`
+	MaxReplicas    int32  `json:"maxReplicas"`
+	Query          string `json:"query"`
+	Threshold      float64 `json:"threshold"`
+	ScaleUp        bool    `json:"scaleUp"`
 }
+
+// ScalePolicyStatus defines the observed state of ScalePolicy
+type ScalePolicyStatus struct {
+	LastScaleTime metav1.Time `json:"lastScaleTime,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // ScalePolicy is the Schema for the scalepolicies API
 type ScalePolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ScalePolicySpec `json:"spec,omitempty"`
+	Spec   ScalePolicySpec   `json:"spec,omitempty"`
+	Status ScalePolicyStatus `json:"status,omitempty"`
 }
+
+// +kubebuilder:object:root=true
 
 // ScalePolicyList contains a list of ScalePolicy
 type ScalePolicyList struct {

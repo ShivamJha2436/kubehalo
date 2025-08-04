@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"kubehalo/internal/kube"
-	"kubehalo/controllers/scalepolicy"
+	"github.com/ShivamJha2436/kubehalo/controllers/scalepolicy"
+	"github.com/ShivamJha2436/kubehalo/internal/kube"
 )
 
 func main() {

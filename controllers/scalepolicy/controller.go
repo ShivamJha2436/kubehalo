@@ -4,10 +4,10 @@ import (
 	"log"
 	"time"
 
-	"kubehalo/internal/metrics"
-	"kubehalo/internal/scaling"
-	"kubehalo/controllers/scalepolicy/handler"
-	"kubehalo/controllers/scalepolicy/lister"
+	"github.com/ShivamJha2436/kubehalo/internal/metrics"
+	"github.com/ShivamJha2436/kubehalo/internal/scaling"
+	"github.com/ShivamJha2436/kubehalo/controllers/scalepolicy/handler"
+	"github.com/ShivamJha2436/kubehalo/controllers/scalepolicy/lister"
 
 	"k8s.io/client-go/kubernetes"
 )
