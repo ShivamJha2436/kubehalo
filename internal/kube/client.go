@@ -2,7 +2,6 @@ package kube
 
 import (
 	"flag"
-	"os"
 	"path/filepath"
 
 	"k8s.io/client-go/kubernetes"
@@ -10,34 +9,25 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// NewClient New client returns a Kubernetes clientset, using in-cluster config if available,
-// otherwise falling back to the local kubeconfig (for development).
+// NewClient returns a Kubernetes clientset (in-cluster or out-of-cluster)
 func NewClient() (*kubernetes.Clientset, error) {
-	var config *rest.Config
-	var err error
-
 	// Try in-cluster config
-	config, err = rest.InClusterConfig()
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		// Fall back to kubeconfig (useful for local development)
+		// Fallback to kubeconfig (for local dev)
 		kubeconfig := filepath.Join(homeDir(), ".kube", "config")
-
-		// Allow overriding path via --kubeconfig flag (optional)
-		kubeconfigFlag := flag.String("kubeconfig", kubeconfig, "(optional) absolute path to the kubeconfig file")
-		flag.Parse()
-
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfigFlag)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return kubernetes.NewForConfig(config)
 }
 
-// homeDir returns the home directory of the current user.
 func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
+	if h := filepath.Dir(flag.Lookup("test.v").Value.String()); h != "" {
 		return h
 	}
-	return os.Getenv("USERPROFILE") // for Windows
+	return filepath.Dir(".")
 }
