@@ -4,26 +4,45 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ScalePolicySpec defines the desired state of ScalePolicy
+// ScalePolicySpec defines the desired state
 type ScalePolicySpec struct {
-	DeploymentName string `json:"deploymentName"`
-	Namespace      string `json:"namespace"`
-	MinReplicas    int32  `json:"minReplicas"`
-	MaxReplicas    int32  `json:"maxReplicas"`
-	Query          string `json:"query"`
-	Threshold      float64 `json:"threshold"`
-	ScaleUp        bool    `json:"scaleUp"`
+	TargetRef TargetRefSpec `json:"targetRef"`
+	Metric    MetricSpec    `json:"metric"`
+	ScaleUp   ScaleAction   `json:"scaleUp"`
+	ScaleDown ScaleAction   `json:"scaleDown"`
+	MinReplicas int32       `json:"minReplicas"`
+	MaxReplicas int32       `json:"maxReplicas"`
 }
 
-// ScalePolicyStatus defines the observed state of ScalePolicy
+// TargetRefSpec tells which deployment to scale
+type TargetRefSpec struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+// MetricSpec defines what metric to watch
+type MetricSpec struct {
+	Name      string  `json:"name"`
+	Query     string  `json:"query"`
+	Threshold float64 `json:"threshold"`
+}
+
+// ScaleAction defines scale-up or scale-down behavior
+type ScaleAction struct {
+	Step            int32 `json:"step"`
+	CooldownSeconds int32 `json:"cooldownSeconds"`
+}
+
+// ScalePolicyStatus reflects observed state
 type ScalePolicyStatus struct {
-	LastScaleTime metav1.Time `json:"lastScaleTime,omitempty"`
+	LastScaleTime *metav1.Time `json:"lastScaleTime,omitempty"`
+	CurrentReplicas int32      `json:"currentReplicas"`
+	DesiredReplicas int32      `json:"desiredReplicas"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// ScalePolicy is the Schema for the scalepolicies API
 type ScalePolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -33,10 +52,12 @@ type ScalePolicy struct {
 }
 
 // +kubebuilder:object:root=true
-
-// ScalePolicyList contains a list of ScalePolicy
 type ScalePolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ScalePolicy `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&ScalePolicy{}, &ScalePolicyList{})
 }
