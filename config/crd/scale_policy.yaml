@@ -4,6 +4,12 @@ metadata:
   name: scalepolicies.kubehalo.sh
 spec:
   group: kubehalo.sh
+  names:
+    kind: ScalePolicy
+    listKind: ScalePolicyList
+    plural: scalepolicies
+    singular: scalepolicy
+  scope: Namespaced
   versions:
     - name: v1
       served: true
@@ -15,25 +21,44 @@ spec:
             spec:
               type: object
               properties:
-                targetDeployment:
-                  type: string
-                targetNamespace:
-                  type: string
-                metricQuery:
-                  type: string
-                thresholds:
+                targetRef:
                   type: object
                   properties:
-                    scaleUp:
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required: ["kind", "name", "namespace"]
+                metric:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    query:
+                      type: string
+                    threshold:
                       type: number
-                    scaleDown:
-                      type: number
+                  required: ["name", "query", "threshold"]
+                scaleUp:
+                  type: object
+                  properties:
+                    step:
+                      type: integer
+                    cooldownSeconds:
+                      type: integer
+                scaleDown:
+                  type: object
+                  properties:
+                    step:
+                      type: integer
+                    cooldownSeconds:
+                      type: integer
+                minReplicas:
+                  type: integer
+                maxReplicas:
+                  type: integer
+              required: ["targetRef", "metric", "scaleUp", "scaleDown", "minReplicas", "maxReplicas"]
       subresources:
         status: {}
-  scope: Namespaced
-  names:
-    plural: scalepolicies
-    singular: scalepolicy
-    kind: ScalePolicy
-    shortNames:
-      - sp
