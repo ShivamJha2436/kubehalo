@@ -11,6 +11,7 @@ export default function Sidebar() {
                 <ul>
                     <li className="text-sm text-gray-700 font-medium py-2">Dashboard</li>
                     <li className="text-sm text-gray-700 font-medium py-2">Policies</li>
+                    <li className="text-sm text-gray-700 font-medium py-2">ScalePolicies</li>
                 </ul>
             </nav>
         </aside>
