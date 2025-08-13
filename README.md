@@ -40,3 +40,30 @@ go run ./cmd/controller
 ```bash
 kubectl apply -f manifests/sample_scale_policy.yaml
 ```
+
+### Example ScalePolicy
+```yaml
+apiVersion: kubehalo.sh/v1
+kind: ScalePolicy
+metadata:
+  name: test-policy
+  namespace: default
+spec:
+  minReplicas: 1
+  maxReplicas: 10
+  metric:
+    name: cpu
+    query: rate(container_cpu_usage_seconds_total[1m])
+    threshold: 0.8
+  scaleUp:
+    step: 2
+    cooldownSeconds: 60
+  scaleDown:
+    step: 1
+    cooldownSeconds: 120
+  targetRef:
+    kind: Deployment
+    name: my-deployment
+    namespace: default
+
+```
