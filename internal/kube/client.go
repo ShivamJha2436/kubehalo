@@ -1,33 +1,52 @@
 package kube
 
 import (
-	"flag"
+	"fmt"
+	"os"
 	"path/filepath"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// NewClient returns a Kubernetes clientset (in-cluster or out-of-cluster)
-func NewClient() (*kubernetes.Clientset, error) {
-	// Try in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		// Fallback to kubeconfig (for local dev)
-		kubeconfig := filepath.Join(homeDir(), ".kube", "config")
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			return nil, err
-		}
+// GetRestConfig returns in-cluster config if present, otherwise local kubeconfig.
+func GetRestConfig() (*rest.Config, error) {
+	// Try in-cluster config (when running inside a Pod)
+	if cfg, err := rest.InClusterConfig(); err == nil {
+		return cfg, nil
 	}
 
-	return kubernetes.NewForConfig(config)
+	// Fallback to local kubeconfig
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		home, _ := os.UserHomeDir()
+		kubeconfig = filepath.Join(home, ".kube", "config")
+	}
+	if _, err := os.Stat(kubeconfig); err != nil {
+		return nil, fmt.Errorf("kubeconfig not found at %s", kubeconfig)
+	}
+
+	return clientcmd.BuildConfigFromFlags("", kubeconfig)
 }
 
-func homeDir() string {
-	if h := filepath.Dir(flag.Lookup("test.v").Value.String()); h != "" {
-		return h
+// NewClients builds both typed and dynamic clients.
+func NewClients() (*kubernetes.Clientset, dynamic.Interface, *rest.Config, error) {
+	cfg, err := GetRestConfig()
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return filepath.Dir(".")
+
+	cs, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	dc, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return cs, dc, cfg, nil
 }

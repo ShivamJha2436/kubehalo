@@ -11,22 +11,23 @@ import (
 )
 
 func main() {
-	clientset, err := kube.NewClient()
+	// Build clients (works both in-cluster and locally with kubeconfig)
+	_, dyn, _, err := kube.NewClients()
 	if err != nil {
-		log.Fatalf("Error building k8s client: %v", err)
+		log.Fatalf("failed to build kubernetes clients: %v", err)
 	}
 
+	ctrl := scalepolicy.NewController(dyn)
+
+	// Handle shutdown signals gracefully
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	if err := scalepolicy.StartController(clientset, stopCh); err != nil {
-		log.Fatalf("Controller failed: %v", err)
-	}
+	go ctrl.Run(stopCh)
 
-	log.Println("[MAIN] Controller is running. Press Ctrl+C to stop...")
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
-	<-sigCh
-
-	log.Println("[MAIN] Shutting down gracefully...")
+	// Block until SIGINT/SIGTERM
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	s := <-sigCh
+	log.Printf("[main] received signal %s, exiting...", s)
 }
