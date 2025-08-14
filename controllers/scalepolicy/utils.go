@@ -2,6 +2,7 @@ package scalepolicy
 
 import (
 	"fmt"
+	"math"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -16,4 +17,15 @@ func GetNestedString(u *unstructured.Unstructured, fields ...string) (string, er
 		return "", fmt.Errorf("field %v not found", fields)
 	}
 	return val, nil
+}
+
+// CalculateReplicas decides new replica count based on metric value and threshold
+func CalculateReplicas(currentReplicas int32, metricValue, threshold float64, scaleUpStep, scaleDownStep int32) int32 {
+	if metricValue > threshold {
+		return currentReplicas + scaleUpStep
+	} else if metricValue < threshold {
+		// minimum 1 replica
+		return int32(math.Max(1, float64(currentReplicas-scaleDownStep)))
+	}
+	return currentReplicas
 }

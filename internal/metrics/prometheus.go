@@ -1,44 +1,44 @@
 package metrics
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"kubehalo/api/v1"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"time"
 )
 
-type PrometheusResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		Result []struct {
-			Value []interface{} `json:"value"`
-		} `json:"result"`
-	} `json:"data"`
+type PrometheusClient struct {
+	client v1.API
 }
 
-func FetchMetric(policy v1.ScalePolicy) (float64, error) {
-	url := fmt.Sprintf("http://prometheus:9090/api/v1/query?query=%s", policy.Spec.MetricQuery)
+func NewPrometheusClient(address string) (*PrometheusClient, error) {
+	cfg := api.Config{Address: address}
+	client, err := api.NewClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &PrometheusClient{client: v1.NewAPI(client)}, nil
+}
 
-	resp, err := http.Get(url)
+// QueryMetric executes a PromQL query and returns the first value
+func (p *PrometheusClient) QueryMetric(query string) (float64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, warnings, err := p.client.Query(ctx, query, time.Now())
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
-
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	var result PrometheusResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return 0, err
+	if len(warnings) > 0 {
+		fmt.Println("Prometheus warnings:", warnings)
 	}
 
-	if len(result.Data.Result) == 0 {
-		return 0, fmt.Errorf("no result from Prometheus")
+	// Extract the value (assumes scalar result)
+	vector, ok := result.(v1.Vector)
+	if ok && len(vector) > 0 {
+		return float64(vector[0].Value), nil
 	}
 
-	value := result.Data.Result[0].Value[1].(string)
-	var val float64
-	fmt.Sscanf(value, "%f", &val)
-	return val, nil
+	return 0, fmt.Errorf("no data returned for query: %s", query)
 }
