@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func (p *PrometheusClient) QueryMetric(query string) (float64, error) {
 	}
 
 	// Extract the value (assumes scalar result)
-	vector, ok := result.(v1.Vector)
+	vector, ok := result.(model.Vector)
 	if ok && len(vector) > 0 {
 		return float64(vector[0].Value), nil
 	}

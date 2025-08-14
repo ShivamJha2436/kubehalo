@@ -4,9 +4,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -14,7 +16,7 @@ import (
 var ScalePolicyGVR = schema.GroupVersionResource{
 	Group:    "kubehalo.sh",
 	Version:  "v1",
-	Resource: "scalepolicies", // plural from CRD YAML
+	Resource: "scalepolicies",
 }
 
 // Controller manages the informer and event handlers
@@ -24,12 +26,12 @@ type Controller struct {
 }
 
 // NewController creates a Controller instance
-func NewController(dynamicClient dynamic.Interface) *Controller {
-	// Resync every 30s — watches all namespaces ("" means all)
+func NewController(dynamicClient dynamic.Interface, kubeClient *kubernetes.Clientset, promClient *metrics.PrometheusClient) *Controller {
+	// Resync every 30s — watches all namespaces
 	factory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 30*time.Second)
 	return &Controller{
 		factory: factory,
-		handler: NewHandler(),
+		handler: NewHandler(kubeClient,promClient),
 	}
 }
 

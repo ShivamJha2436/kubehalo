@@ -8,18 +8,22 @@ import (
 
 	"github.com/ShivamJha2436/kubehalo/controllers/scalepolicy"
 	"github.com/ShivamJha2436/kubehalo/internal/kube"
+	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 )
 
 func main() {
-	// Build clients (works both in-cluster and locally with kubeconfig)
-	_, dyn, _, err := kube.NewClients()
+	kubeClient, dynClient, _, err := kube.NewClients()
 	if err != nil {
 		log.Fatalf("failed to build kubernetes clients: %v", err)
 	}
+	promClient, err := metrics.NewPrometheusClient("http://localhost:9000")
+	if err != nil {
+		log.Fatalf("failed to create Prometheus client: %v", err)
+	}
 
-	ctrl := scalepolicy.NewController(dyn)
+	ctrl := scalepolicy.NewController(dynClient, kubeClient, promClient)
 
-	// Handle shutdown signals gracefully
+	// Handle shutdown signals
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
