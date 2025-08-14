@@ -1,55 +1,27 @@
-"use client"
+import Card from "../components/ui/Card";
+import MetricChart from "../components/MetricChart";
+import { getMockOverview } from "../lib/api";
 
-import { useEffect, useState } from "react";
-import PolicyCard from "@/components/PolicyCard";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import Chart from "@/components/Chart";
-
-const mockPolicies = [
-    {
-        name: "autoscale-nginx",
-        namespace: "default",
-        targetDeployment: "nginx-deployment",
-        metricQuery: "avg(rate(http_requests_total[2m]))",
-        thresholds: { scaleUp: 0.75, scaleDown: 0.25 },
-    },
-    {
-        name: "autoscale-api",
-        namespace: "production",
-        targetDeployment: "api-deployment",
-        metricQuery: "sum(rate(api_requests_total[1m]))",
-        thresholds: { scaleUp: 0.9, scaleDown: 0.4 },
-    },
-];
-
-export default function Dashboard() {
-    const [policies, setPolicies] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        setTimeout(() => {
-            setPolicies(mockPolicies); // Replace with API later
-            setLoading(false);
-        }, 1000);
-    }, []);
+export default async function Page() {
+    // server component can call server-side helpers; using a mock for now
+    const overview = await getMockOverview();
 
     return (
-        <>
-            <h1 className="text-2xl font-semibold mb-4">Scale Policies</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {loading ? (
-                    <LoadingSpinner />
-                ) : (
-                    policies.map((policy, i) => (
-                        <PolicyCard key={i} policy={policy} />
-                    ))
-                )}
+        <div className="space-y-6">
+            <h1 className="text-2xl font-semibold">Overview</h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card title="Scale Policies" value={String(overview.policies)} />
+                <Card title="Total Deployments" value={String(overview.deployments)} />
+                <Card title="Active Alerts" value={String(overview.alerts)} />
             </div>
 
-            <div className="mt-12">
-                <h2 className="text-xl font-semibold mb-2">Metric Overview</h2>
-                <Chart />
+            <div className="mt-4">
+                <h2 className="text-lg font-medium mb-2">Cluster Metrics</h2>
+                <div className="bg-white rounded-md p-4 shadow">
+                    <MetricChart metric="up" label="Up (sample metric)" />
+                </div>
             </div>
-        </>
+        </div>
     );
 }
