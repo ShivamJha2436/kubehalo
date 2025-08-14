@@ -23,23 +23,25 @@ var ScalePolicyGVR = schema.GroupVersionResource{
 type Controller struct {
 	factory dynamicinformer.DynamicSharedInformerFactory
 	handler *Handler
+	informer cache.SharedIndexInformer
 }
 
 // NewController creates a Controller instance
 func NewController(dynamicClient dynamic.Interface, kubeClient *kubernetes.Clientset, promClient *metrics.PrometheusClient) *Controller {
-	// Resync every 30s — watches all namespaces
 	factory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 30*time.Second)
-	return &Controller{
+	//Create the controller instance
+	ctrl := &Controller{
 		factory: factory,
 		handler: NewHandler(kubeClient,promClient),
 	}
+	ctrl.informer = factory.ForResource(ScalePolicyGVR).Informer()
+	return ctrl
 }
 
 // Run starts the informer loop
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	// Create informer for ScalePolicy CRD
 	informer := c.factory.ForResource(ScalePolicyGVR).Informer()
-
 	// Register event handlers
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {

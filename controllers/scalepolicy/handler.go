@@ -72,7 +72,6 @@ func (h *Handler) prettyLog(eventType string, u *unstructured.Unstructured) {
 
 // process calculates scaling decision (Phase 3: log only)
 func (h *Handler) process(u *unstructured.Unstructured) {
-	// Extract deployment info from CRD
 	deploymentName, err := GetNestedString(u, "spec", "targetRef", "name")
 	if err != nil {
 		log.Println("Error reading deployment name:", err)
