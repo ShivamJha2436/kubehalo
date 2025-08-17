@@ -1,19 +1,39 @@
-import Image from "next/image";
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const items = [
+    { href: "/", label: "Overview" },
+    { href: "/policies", label: "Scale Policies" },
+    { href: "/metrics", label: "Metrics" },
+    { href: "/settings", label: "Settings" },
+];
 
 export default function Sidebar() {
+    const pathname = usePathname();
+
     return (
-        <aside className="w-64 hidden md:block bg-white h-screen shadow-md p-4">
-            <div className="flex items-center gap-2">
-                <Image src="/kubehalo.png" alt="KubeHalo" width={96} height={26} />
-                <h2 className="font-bold text-lg">KubeHalo</h2>
+        <aside className="w-64 bg-white border-r hidden md:block">
+            <div className="h-full flex flex-col">
+                <div className="p-4 border-b">
+                    <img src="/kubehalo.png" alt="KubeHalo" className="h-6 w-6" />
+                </div>
+                <nav className="p-4 space-y-1">
+                    {items.map((it) => {
+                        const active = pathname === it.href;
+                        return (
+                            <Link
+                                key={it.href}
+                                href={it.href}
+                                className={`block px-3 py-2 rounded-md text-sm ${active ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                {it.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+                <div className="mt-auto p-4 text-xs text-gray-500">KubeHalo &middot; Dashboard</div>
             </div>
-            <nav className="mt-6">
-                <ul>
-                    <li className="text-sm text-gray-700 font-medium py-2">Dashboard</li>
-                    <li className="text-sm text-gray-700 font-medium py-2">Policies</li>
-                    <li className="text-sm text-gray-700 font-medium py-2">ScalePolicies</li>
-                </ul>
-            </nav>
         </aside>
     );
 }
