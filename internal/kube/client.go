@@ -28,7 +28,9 @@ func GetRestConfig() (*rest.Config, error) {
 		return nil, fmt.Errorf("kubeconfig not found at %s", kubeconfig)
 	}
 
-	return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
+	configOverrides := &clientcmd.ConfigOverrides{}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides).ClientConfig()
 }
 
 // NewClients builds both typed and dynamic clients.
