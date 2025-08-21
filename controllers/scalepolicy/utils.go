@@ -18,6 +18,17 @@ func GetNestedString(u *unstructured.Unstructured, fields ...string) (string, er
 	}
 	return val, nil
 }
+// for metrics like threshold
+func GetNestedFloat64(u *unstructured.Unstructured, fields ...string) (float64, error) {
+	val, found, err := unstructured.NestedFloat64(u.Object, fields...)
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return 0, fmt.Errorf("field %v not found", fields)
+	}
+	return val, nil
+}
 
 // CalculateReplicas decides new replica count based on metric value and threshold
 func CalculateReplicas(currentReplicas int32, metricValue, threshold float64, scaleUpStep, scaleDownStep int32) int32 {
