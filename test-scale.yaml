@@ -1,0 +1,20 @@
+apiVersion: kubehalo.sh/v1
+kind: ScalePolicy
+metadata:
+  name: test-scale
+  namespace: default
+spec:
+  targetRef:
+    kind: Deployment
+    name: test-deployment
+    namespace: default
+  metric:
+    name: up-metric
+    query: 'up'
+    threshold: 0
+  minReplicas: 1
+  maxReplicas: 5
+  scaleUp:
+    step: 1
+  scaleDown:
+    step: 1
