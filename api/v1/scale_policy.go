@@ -33,7 +33,7 @@ type TargetRefSpec struct {
 type MetricSpec struct {
 	Name      string  `json:"name"`
 	Query     string  `json:"query"`
-	Threshold float64 `json:"threshold"`
+	Threshold int `json:"threshold"`
 }
 
 // ScaleAction defines scale-up or scale-down behavior

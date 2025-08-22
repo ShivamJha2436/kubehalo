@@ -39,7 +39,7 @@ spec:
                     query:
                       type: string
                     threshold:
-                      type: number
+                      type: integer
                   required: ["name", "query", "threshold"]
                 scaleUp:
                   type: object

@@ -33,17 +33,15 @@ func NewController(dynamicClient dynamic.Interface, kubeClient *kubernetes.Clien
 	ctrl := &Controller{
 		factory: factory,
 		handler: NewHandler(kubeClient,promClient),
+		informer: factory.ForResource(ScalePolicyGVR).Informer(),
 	}
-	ctrl.informer = factory.ForResource(ScalePolicyGVR).Informer()
 	return ctrl
 }
 
 // Run starts the informer loop
 func (c *Controller) Run(stopCh <-chan struct{}) {
-	// Create informer for ScalePolicy CRD
-	informer := c.factory.ForResource(ScalePolicyGVR).Informer()
 	// Register event handlers
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	c.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			c.handler.OnAdd(obj)
 		},
@@ -60,7 +58,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	c.factory.Start(stopCh)
 
 	// Wait for caches to sync
-	if !cache.WaitForCacheSync(stopCh, informer.HasSynced) {
+	if !cache.WaitForCacheSync(stopCh, c.informer.HasSynced) {
 		log.Println("[controller] Failed to sync caches.")
 		return
 	}
