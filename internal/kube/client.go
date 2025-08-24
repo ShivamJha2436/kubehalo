@@ -12,6 +12,8 @@ import (
 )
 
 // GetRestConfig returns in-cluster config if present, otherwise local kubeconfig.
+// - If running inside a Pod, it uses the in-cluster config.
+// - Otherwise, it falls back to the local kubeconfig file (~/.kube/config or $KUBECONFIG).
 func GetRestConfig() (*rest.Config, error) {
 	// Try in-cluster config (when running inside a Pod)
 	if cfg, err := rest.InClusterConfig(); err == nil {
@@ -30,25 +32,39 @@ func GetRestConfig() (*rest.Config, error) {
 
 	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig}
 	configOverrides := &clientcmd.ConfigOverrides{}
+
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides).ClientConfig()
 }
 
-// NewClients builds both typed and dynamic clients.
-func NewClients() (*kubernetes.Clientset, dynamic.Interface, *rest.Config, error) {
+// Clients holds all Kubernetes clients that we commonly use.
+type Clients struct {
+	Kube    *kubernetes.Clientset // typed client
+	Dynamic dynamic.Interface     // dynamic client (for CRDs like ScalePolicy)
+	Config  *rest.Config          // raw config
+}
+
+// NewClients builds a Clients struct with typed and dynamic clients.
+func NewClients() (*Clients, error) {
 	cfg, err := GetRestConfig()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
+	// Typed client
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
+	// Dynamic client
 	dc, err := dynamic.NewForConfig(cfg)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
-	return cs, dc, cfg, nil
+	return &Clients{
+		Kube:    cs,
+		Dynamic: dc,
+		Config:  cfg,
+	}, nil
 }
