@@ -14,12 +14,14 @@ var (
 
 // ScalePolicySpec defines the desired state
 type ScalePolicySpec struct {
-	TargetRef TargetRefSpec `json:"targetRef"`
-	Metric    MetricSpec    `json:"metric"`
-	ScaleUp   ScaleAction   `json:"scaleUp"`
-	ScaleDown ScaleAction   `json:"scaleDown"`
-	MinReplicas int32       `json:"minReplicas"`
-	MaxReplicas int32       `json:"maxReplicas"`
+	TargetRef   TargetRefSpec `json:"targetRef"`
+	Metric      MetricSpec    `json:"metric"`
+	ScaleUp     ScaleAction   `json:"scaleUp"`
+	ScaleDown   ScaleAction   `json:"scaleDown"`
+	MinReplicas int32         `json:"minReplicas"`
+	MaxReplicas int32         `json:"maxReplicas"`
+	MetricQuery string        `json:"metricQuery"`
+	Threshold   int32         `json:"threshold"`
 }
 
 // TargetRefSpec tells which deployment to scale

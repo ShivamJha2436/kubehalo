@@ -13,3 +13,4 @@ KubeHalo is a Kubernetes-native **autoscaling and monitoring system** powered by
 - [Dashboard](dashboard.md)
 - [Contributing](contributing.md)
 - [Roadmap](roadmap.md)
+
