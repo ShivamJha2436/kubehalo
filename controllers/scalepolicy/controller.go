@@ -21,18 +21,18 @@ var ScalePolicyGVR = schema.GroupVersionResource{
 
 // Controller manages the informer and event handlers
 type Controller struct {
-	factory dynamicinformer.DynamicSharedInformerFactory
-	handler *Handler
+	factory  dynamicinformer.DynamicSharedInformerFactory
+	handler  *Handler
 	informer cache.SharedIndexInformer
 }
 
 // NewController creates a Controller instance
 func NewController(dynamicClient dynamic.Interface, kubeClient *kubernetes.Clientset, promClient *metrics.PrometheusClient) *Controller {
 	factory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 30*time.Second)
-	//Create the controller instance
+
 	ctrl := &Controller{
-		factory: factory,
-		handler: NewHandler(kubeClient,promClient),
+		factory:  factory,
+		handler:  NewHandler(kubeClient, promClient),
 		informer: factory.ForResource(ScalePolicyGVR).Informer(),
 	}
 	return ctrl
@@ -43,12 +43,15 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	// Register event handlers
 	c.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			log.Println("[controller] Add event received for ScalePolicy")
 			c.handler.OnAdd(obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
+			log.Println("[controller] Update event received for ScalePolicy")
 			c.handler.OnUpdate(oldObj, newObj)
 		},
 		DeleteFunc: func(obj interface{}) {
+			log.Println("[controller] Delete event received for ScalePolicy")
 			c.handler.OnDelete(obj)
 		},
 	})
