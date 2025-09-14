@@ -4,26 +4,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/ShivamJha2436/kubehalo/internal/scaling"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
-	"github.com/ShivamJha2436/kubehalo/internal/metrics"
-	"github.com/ShivamJha2436/kubehalo/internal/scaling"
 )
+
+// PromClientInterface defines the methods used by Handler
+type PromClientInterface interface {
+	QueryMetric(query string) (float64, error)
+}
 
 // Handler processes ScalePolicy events
 type Handler struct {
-	promClient *metrics.PrometheusClient
-	engine     *scaling.ScalingEngine
-	KubeClient *kubernetes.Clientset
+	promClient     PromClientInterface
+	engine         *scaling.ScalingEngine
+	KubeClient     kubernetes.Interface
+	lastScaleTimes map[string]time.Time // key = namespace/name
 }
 
 // NewHandler returns a new Handler instance
-func NewHandler(kubeClient *kubernetes.Clientset, promClient *metrics.PrometheusClient) *Handler {
+func NewHandler(kubeClient kubernetes.Interface, promClient PromClientInterface) *Handler {
 	return &Handler{
-		promClient: promClient,
-		engine: scaling.NewScalingEngine(kubeClient),
-		KubeClient: kubeClient,
+		promClient:     promClient,
+		engine:         scaling.NewScalingEngine(kubeClient),
+		KubeClient:     kubeClient,
+		lastScaleTimes: make(map[string]time.Time),
 	}
 }
 
@@ -70,7 +77,7 @@ func (h *Handler) prettyLog(eventType string, u *unstructured.Unstructured) {
 		eventType, namespace, name, string(specJSON))
 }
 
-// process calculates scaling decision (Phase 3: log only)
+// process calculates scaling decision and applies BehaviorSpec rules
 func (h *Handler) process(u *unstructured.Unstructured) {
 	deploymentName, err := GetNestedString(u, "spec", "targetRef", "name")
 	if err != nil {
@@ -106,11 +113,48 @@ func (h *Handler) process(u *unstructured.Unstructured) {
 		return
 	}
 
-	// assume current replicas = 1 (will replace later with actual fetch)
+	// assume current replicas = 1 (TODO: fetch actual replicas from Deployment)
 	currentReplicas := int32(1)
-	// Calculate desired replicas
-	newReplicas := CalculateReplicas(currentReplicas, metricValue, threshold, 1, 1)
-	// Log scaling decision (Phase 3)
+	desiredReplicas := CalculateReplicas(currentReplicas, metricValue, threshold, 1, 1)
+
+	// --- Apply BehaviorSpec ---
+	behavior := u.Object["spec"].(map[string]interface{})["behavior"]
+	if behavior != nil {
+		if bMap, ok := behavior.(map[string]interface{}); ok {
+			key := namespace + "/" + deploymentName
+
+			// Stabilization window
+			if secs, ok := bMap["stabilizationWindowSeconds"].(int64); ok && secs > 0 {
+				last, exists := h.lastScaleTimes[key]
+				if exists && time.Since(last) < time.Duration(secs)*time.Second {
+					log.Printf("[behavior] Skipping scale for %s due to stabilization window (%ds)",
+						key, secs)
+					return
+				}
+				h.lastScaleTimes[key] = time.Now()
+			}
+
+			// Max scale-up rate
+			if maxUp, ok := bMap["maxScaleUpRate"].(int64); ok && desiredReplicas-currentReplicas > int32(maxUp) {
+				log.Printf("[behavior] Capping scale-up: requested %d, capped to %d",
+					desiredReplicas, currentReplicas+int32(maxUp))
+				desiredReplicas = currentReplicas + int32(maxUp)
+			}
+
+			// Max scale-down rate
+			if maxDown, ok := bMap["maxScaleDownRate"].(int64); ok && currentReplicas-desiredReplicas > int32(maxDown) {
+				log.Printf("[behavior] Capping scale-down: requested %d, capped to %d",
+					desiredReplicas, currentReplicas-int32(maxDown))
+				desiredReplicas = currentReplicas - int32(maxDown)
+			}
+
+			// Policy (absolute vs percent) — log only for now
+			if policy, ok := bMap["policy"].(string); ok {
+				log.Printf("[behavior] Policy set to: %s", policy)
+			}
+		}
+	}
+
 	log.Printf("[Phase3] Would scale %s/%s from %d -> %d replicas (metric=%.2f, threshold=%.2f)\n",
-		namespace, deploymentName, currentReplicas, newReplicas, metricValue, threshold)
+		namespace, deploymentName, currentReplicas, desiredReplicas, metricValue, threshold)
 }
