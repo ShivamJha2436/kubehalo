@@ -12,9 +12,9 @@ import (
 )
 
 // Handler processes ScalePolicy events
-type Handler struct{
+type Handler struct {
 	promClient *metrics.PrometheusClient
-	engine	   *scaling.ScalingEngine
+	engine     *scaling.ScalingEngine
 	KubeClient *kubernetes.Clientset
 }
 
