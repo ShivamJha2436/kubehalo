@@ -7,9 +7,8 @@ import (
 
 	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	_ "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic/fake"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 // mockHandler embeds Handler but adds counters for calls
