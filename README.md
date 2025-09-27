@@ -11,7 +11,6 @@ The controller watches these resources in real time, evaluates metrics, and adju
 - ✅ Controller implemented to watch and log CRD events
 - 🚧 Prometheus metrics integration
 - 🚧 Scaling engine for deployments
-- 🚧 Web dashboard for management and visualization
 
 ---
 
