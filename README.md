@@ -67,6 +67,13 @@ spec:
     cooldownSeconds: 120
   minReplicas: 1
   maxReplicas: 10
+  schedules:
+    - name: weekday-business-hours
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"]
+      startTime: "09:00"
+      endTime: "18:00"
+      minReplicas: 3
+      maxReplicas: 10
   behavior:
     stabilizationWindowSeconds: 60
     maxScaleUpRate: 2
@@ -124,7 +131,7 @@ KubeHalo reads runtime configuration from environment variables.
 
 | Variable | Default | Used By |
 | --- | --- | --- |
-| `KUBEHALO_PROMETHEUS_ADDR` | `http://localhost:9090` | controller |
+| `KUBEHALO_PROMETHEUS_ADDR` | `http://localhost:9090` | controller, webhook |
 | `KUBEHALO_API_ADDR` | `:8080` | API server |
 | `KUBEHALO_WEBHOOK_ADDR` | `:8443` | webhook server |
 | `KUBEHALO_WEBHOOK_CERT_FILE` | `/tls/tls.crt` | webhook server |
@@ -154,6 +161,13 @@ The repository includes tests for:
 - handler-driven scaling decisions
 - Deployment scaling engine behavior
 - webhook admission validation
+
+The webhook currently validates:
+
+- required fields and logical replica bounds
+- non-negative metric thresholds
+- invalid Prometheus queries through a dry-run query
+- overlapping time-based schedules
 
 Run everything with:
 

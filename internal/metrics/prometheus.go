@@ -14,6 +14,7 @@ import (
 // Client describes the metric query behavior used by the controller.
 type Client interface {
 	QueryMetric(query string) (float64, error)
+	ValidateQuery(query string) error
 }
 
 type PrometheusClient struct {
@@ -49,4 +50,20 @@ func (p *PrometheusClient) QueryMetric(query string) (float64, error) {
 	}
 
 	return 0, fmt.Errorf("no data returned for query: %s", query)
+}
+
+// ValidateQuery performs a Prometheus dry-run query to validate PromQL syntax.
+func (p *PrometheusClient) ValidateQuery(query string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, warnings, err := p.client.Query(ctx, query, time.Now())
+	if err != nil {
+		return err
+	}
+	if len(warnings) > 0 {
+		log.Printf("[metrics] Prometheus warnings: %v", warnings)
+	}
+
+	return nil
 }

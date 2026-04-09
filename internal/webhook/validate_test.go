@@ -3,6 +3,7 @@ package webhook
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,20 +15,29 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+type stubQueryValidator struct {
+	err error
+}
+
+func (s stubQueryValidator) ValidateQuery(query string) error {
+	return s.err
+}
+
 func TestValidateScalePolicy(t *testing.T) {
+	validator := NewValidator(nil)
 	policy := validScalePolicy()
-	if err := validateScalePolicy(policy); err != nil {
+	if err := validator.ValidateScalePolicy(policy); err != nil {
 		t.Fatalf("expected valid policy, got error: %v", err)
 	}
 
 	policy.Spec.Metric.Query = ""
-	if err := validateScalePolicy(policy); err == nil {
+	if err := validator.ValidateScalePolicy(policy); err == nil {
 		t.Fatal("expected validation error for empty metric query")
 	}
 }
 
 func TestServeAllowsValidPolicy(t *testing.T) {
-	response := serveAdmissionReview(t, validScalePolicy())
+	response := serveAdmissionReview(t, NewValidator(stubQueryValidator{}), validScalePolicy())
 	if response.Response == nil || !response.Response.Allowed {
 		t.Fatalf("expected admission request to be allowed, got %+v", response.Response)
 	}
@@ -37,13 +47,43 @@ func TestServeRejectsInvalidPolicy(t *testing.T) {
 	policy := validScalePolicy()
 	policy.Spec.MaxReplicas = 0
 
-	response := serveAdmissionReview(t, policy)
+	response := serveAdmissionReview(t, NewValidator(stubQueryValidator{}), policy)
 	if response.Response == nil || response.Response.Allowed {
 		t.Fatalf("expected admission request to be denied, got %+v", response.Response)
 	}
 }
 
-func serveAdmissionReview(t *testing.T, policy *kubehalov1.ScalePolicy) admissionv1.AdmissionReview {
+func TestServeRejectsInvalidPrometheusQuery(t *testing.T) {
+	response := serveAdmissionReview(t, NewValidator(stubQueryValidator{err: errors.New("parse error")}), validScalePolicy())
+	if response.Response == nil || response.Response.Allowed {
+		t.Fatalf("expected invalid query to be rejected, got %+v", response.Response)
+	}
+}
+
+func TestServeRejectsOverlappingSchedules(t *testing.T) {
+	policy := validScalePolicy()
+	policy.Spec.Schedules = []kubehalov1.ScheduleSpec{
+		{
+			Name:      "morning",
+			Days:      []string{"Mon", "Tue"},
+			StartTime: "09:00",
+			EndTime:   "12:00",
+		},
+		{
+			Name:      "overlap",
+			Days:      []string{"Tue"},
+			StartTime: "11:00",
+			EndTime:   "13:00",
+		},
+	}
+
+	response := serveAdmissionReview(t, NewValidator(stubQueryValidator{}), policy)
+	if response.Response == nil || response.Response.Allowed {
+		t.Fatalf("expected overlapping schedules to be rejected, got %+v", response.Response)
+	}
+}
+
+func serveAdmissionReview(t *testing.T, validator *Validator, policy *kubehalov1.ScalePolicy) admissionv1.AdmissionReview {
 	t.Helper()
 
 	rawPolicy, err := json.Marshal(policy)
@@ -66,7 +106,7 @@ func serveAdmissionReview(t *testing.T, policy *kubehalov1.ScalePolicy) admissio
 	request := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewReader(body))
 	recorder := httptest.NewRecorder()
 
-	Serve(recorder, request)
+	NewHandler(validator)(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d with body %s", recorder.Code, recorder.Body.String())
@@ -95,7 +135,7 @@ func validScalePolicy() *kubehalov1.ScalePolicy {
 			Metric: kubehalov1.MetricSpec{
 				Name:      "cpu",
 				Query:     "demo_metric",
-				Threshold: 0.8,
+				Threshold: 0,
 			},
 			ScaleUp: kubehalov1.ScaleAction{Step: 2},
 			ScaleDown: kubehalov1.ScaleAction{
