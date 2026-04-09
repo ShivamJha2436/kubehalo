@@ -3,50 +3,57 @@ package webhook
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
-	"github.com/ShivamJha2436/kubehalo/api/kubehalo/v1"
+	kubehalov1 "github.com/ShivamJha2436/kubehalo/api/kubehalo/v1"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-var (
-	codecs = serializer.NewCodecFactory(runtime.NewScheme())
-	deserializer = codecs.UniversalDeserializer()
-)
-
-// validateScalePolicy checks ScalePolicy rules
-func validateScalePolicy(sp *v1.ScalePolicy) error {
-	if sp.Spec.MetricQuery == "" {
-		return fmt.Errorf("metricQuery must not be empty")
+// validateScalePolicy checks ScalePolicy rules.
+func validateScalePolicy(sp *kubehalov1.ScalePolicy) error {
+	if sp.Spec.TargetRef.Kind == "" || sp.Spec.TargetRef.Name == "" || sp.Spec.TargetRef.Namespace == "" {
+		return fmt.Errorf("targetRef must include kind, name, and namespace")
 	}
-	if sp.Spec.Threshold <= 0 {
-		return fmt.Errorf("threshold must be > 0")
+	if sp.Spec.Metric.Query == "" {
+		return fmt.Errorf("metric.query must not be empty")
 	}
-	if sp.Spec.ScaleTargetRef.Name == "" || sp.Spec.ScaleTargetRef.Kind == "" {
-		return fmt.Errorf("scaleTargetRef must include kind and name")
+	if sp.Spec.Metric.Threshold <= 0 {
+		return fmt.Errorf("metric.threshold must be greater than zero")
+	}
+	if sp.Spec.MinReplicas <= 0 {
+		return fmt.Errorf("minReplicas must be greater than zero")
+	}
+	if sp.Spec.MaxReplicas < sp.Spec.MinReplicas {
+		return fmt.Errorf("maxReplicas must be greater than or equal to minReplicas")
+	}
+	if sp.Spec.ScaleUp.Step <= 0 || sp.Spec.ScaleDown.Step <= 0 {
+		return fmt.Errorf("scaleUp.step and scaleDown.step must be greater than zero")
 	}
 	return nil
 }
 
-// Serve handles admission requests
+// Serve handles admission requests.
 func Serve(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var review admissionv1.AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if review.Request == nil {
+		http.Error(w, "admission review request is required", http.StatusBadRequest)
+		return
+	}
 
-	req := review.Request
-	var sp v1.ScalePolicy
-	if _, _, err := deserializer.Decode(req.Object.Raw, nil, &sp); err != nil {
+	var sp kubehalov1.ScalePolicy
+	if err := json.Unmarshal(review.Request.Object.Raw, &sp); err != nil {
 		writeResponse(w, review, false, fmt.Sprintf("cannot decode object: %v", err))
 		return
 	}
 
-	// Run validation
 	if err := validateScalePolicy(&sp); err != nil {
 		writeResponse(w, review, false, err.Error())
 		return
@@ -56,6 +63,8 @@ func Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeResponse(w http.ResponseWriter, review admissionv1.AdmissionReview, allowed bool, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+
 	response := admissionv1.AdmissionReview{
 		TypeMeta: review.TypeMeta,
 		Response: &admissionv1.AdmissionResponse{
@@ -66,5 +75,7 @@ func writeResponse(w http.ResponseWriter, review admissionv1.AdmissionReview, al
 			},
 		},
 	}
-	_ = json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil && err != io.EOF {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

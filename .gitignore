@@ -1,3 +1,6 @@
-.idea/vcs.xml
+.idea/
+bin/
+dist/
+.cache/
+coverage.out
 controller.exe
-bin

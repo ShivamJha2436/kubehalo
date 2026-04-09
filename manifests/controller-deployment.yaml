@@ -17,8 +17,11 @@ spec:
       containers:
         - name: controller
           image: your-dockerhub-username/kubehalo:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           command: ["/controller"]
+          env:
+            - name: KUBEHALO_PROMETHEUS_ADDR
+              value: http://prometheus-operated.monitoring.svc.cluster.local:9090
           resources:
             requests:
               cpu: "100m"

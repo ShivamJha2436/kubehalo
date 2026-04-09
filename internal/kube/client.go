@@ -38,25 +38,23 @@ func GetRestConfig() (*rest.Config, error) {
 
 // Clients holds all Kubernetes clients that we commonly use.
 type Clients struct {
-	Kube    *kubernetes.Clientset // typed client
-	Dynamic dynamic.Interface     // dynamic client (for CRDs like ScalePolicy)
-	Config  *rest.Config          // raw config
+	Kube    kubernetes.Interface
+	Dynamic dynamic.Interface
+	Config  *rest.Config
 }
 
-// NewClients builds a Clients struct with typed and dynamic clients.
+// NewClients builds typed and dynamic Kubernetes clients from the active config.
 func NewClients() (*Clients, error) {
 	cfg, err := GetRestConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	// Typed client
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Dynamic client
 	dc, err := dynamic.NewForConfig(cfg)
 	if err != nil {
 		return nil, err

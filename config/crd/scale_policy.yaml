@@ -21,10 +21,15 @@ spec:
             spec:
               type: object
               properties:
+                enabled:
+                  type: boolean
+                evaluationIntervalSeconds:
+                  type: integer
                 targetRef:
                   type: object
                   properties:
                     kind:
+                      enum: ["Deployment", "StatefulSet"]
                       type: string
                     name:
                       type: string
@@ -36,10 +41,14 @@ spec:
                   properties:
                     name:
                       type: string
+                    type:
+                      type: string
                     query:
                       type: string
                     threshold:
-                      type: integer
+                      type: number
+                    targetType:
+                      type: string
                   required: ["name", "query", "threshold"]
                 scaleUp:
                   type: object
@@ -48,6 +57,7 @@ spec:
                       type: integer
                     cooldownSeconds:
                       type: integer
+                  required: ["step"]
                 scaleDown:
                   type: object
                   properties:
@@ -55,10 +65,23 @@ spec:
                       type: integer
                     cooldownSeconds:
                       type: integer
+                  required: ["step"]
                 minReplicas:
                   type: integer
                 maxReplicas:
                   type: integer
+                behavior:
+                  type: object
+                  properties:
+                    stabilizationWindowSeconds:
+                      type: integer
+                    maxScaleUpRate:
+                      type: integer
+                    maxScaleDownRate:
+                      type: integer
+                    policy:
+                      type: string
+                      enum: ["absolute", "percent"]
               required: ["targetRef", "metric", "scaleUp", "scaleDown", "minReplicas", "maxReplicas"]
       subresources:
         status: {}

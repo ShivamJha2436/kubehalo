@@ -1,114 +1,43 @@
 package scalepolicy
 
 import (
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	_ "k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/tools/cache"
 )
 
-// mockHandler embeds Handler but adds counters for calls
-type mockHandler struct {
-	addCount    int
-	updateCount int
-	deleteCount int
-	mu          sync.Mutex
-}
+type stubEventHandler struct{}
 
-func (m *mockHandler) OnAdd(obj interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.addCount++
-}
+func (stubEventHandler) OnAdd(obj interface{})               {}
+func (stubEventHandler) OnUpdate(oldObj, newObj interface{}) {}
+func (stubEventHandler) OnDelete(obj interface{})            {}
 
-func (m *mockHandler) OnUpdate(oldObj, newObj interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.updateCount++
-}
+func TestNewControllerWithHandler(t *testing.T) {
+	dynamicClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	handler := stubEventHandler{}
 
-func (m *mockHandler) OnDelete(obj interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.deleteCount++
-}
+	controller := NewControllerWithHandler(dynamicClient, handler, time.Second)
 
-func TestController_Run(t *testing.T) {
-	// Fake k8s + dynamic clients
-	kubeClient := fake.NewSimpleClientset()
-	dynamicClient := fake.NewSimpleDynamicClient(kubeClient.Discovery().RESTMapper())
-
-	// Fake Prometheus client
-	promClient := &metrics.PrometheusClient{}
-
-	// Create controller
-	ctrl := NewController(dynamicClient, kubeClient, promClient)
-
-	// Replace real handler with mock handler
-	mock := &mockHandler{}
-	ctrl.handler = &Handler{
-		OnAdd:    mock.OnAdd,
-		OnUpdate: mock.OnUpdate,
-		OnDelete: mock.OnDelete,
+	if controller.handler != handler {
+		t.Fatal("expected controller to keep the injected handler")
 	}
-
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-
-	// Run controller in goroutine
-	go ctrl.Run(stopCh)
-
-	// Wait briefly to allow informer to start
-	time.Sleep(200 * time.Millisecond)
-
-	// Create a fake ScalePolicy with BehaviorSpec
-	obj := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "kubehalo.sh/v1",
-			"kind":       "ScalePolicy",
-			"metadata": map[string]interface{}{
-				"name": "test-policy",
-			},
-			"spec": map[string]interface{}{
-				"behavior": map[string]interface{}{
-					"stabilizationWindowSeconds": 60,
-					"maxScaleUpRate":             2,
-					"maxScaleDownRate":           1,
-					"policy":                     "absolute",
-				},
-			},
-		},
-	}
-
-	// Simulate Add event
-	ctrl.informer.GetStore().Add(obj)
-
-	// Simulate Update event
-	updated := obj.DeepCopy()
-	updated.Object["spec"].(map[string]interface{})["behavior"].(map[string]interface{})["maxScaleUpRate"] = 5
-	ctrl.informer.GetStore().Update(updated)
-
-	// Simulate Delete event
-	ctrl.informer.GetStore().Delete(updated)
-
-	// Allow handlers to be called
-	time.Sleep(200 * time.Millisecond)
-
-	mock.mu.Lock()
-	defer mock.mu.Unlock()
-
-	if mock.addCount != 1 {
-		t.Errorf("expected addCount=1, got %d", mock.addCount)
-	}
-	if mock.updateCount != 1 {
-		t.Errorf("expected updateCount=1, got %d", mock.updateCount)
-	}
-	if mock.deleteCount != 1 {
-		t.Errorf("expected deleteCount=1, got %d", mock.deleteCount)
+	if controller.informer == nil {
+		t.Fatal("expected controller informer to be initialized")
 	}
 }
 
+func TestToUnstructuredSupportsDeletedFinalStateUnknown(t *testing.T) {
+	obj := &unstructured.Unstructured{Object: map[string]interface{}{"kind": "ScalePolicy"}}
+
+	got, ok := toUnstructured(cache.DeletedFinalStateUnknown{Obj: obj})
+	if !ok {
+		t.Fatal("expected tombstone object to be handled")
+	}
+	if got != obj {
+		t.Fatal("expected original unstructured object back")
+	}
+}

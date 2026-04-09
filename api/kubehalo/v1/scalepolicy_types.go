@@ -7,22 +7,22 @@ import (
 )
 
 var (
-	GroupVersion = schema.GroupVersion{Group: "kubehalo.sh", Version: "v1"}
+	GroupVersion  = schema.GroupVersion{Group: "kubehalo.sh", Version: "v1"}
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
-	AddToScheme = SchemeBuilder.AddToScheme
+	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
 // ScalePolicySpec defines the desired state
 type ScalePolicySpec struct {
-	TargetRef   TargetRefSpec   `json:"targetRef"`
-	Metrics     []MetricSpec    `json:"metrics"` // support multiple metrics
-	ScaleUp     ScaleAction     `json:"scaleUp"`
-	ScaleDown   ScaleAction     `json:"scaleDown"`
-	MinReplicas int32           `json:"minReplicas"`
-	MaxReplicas int32           `json:"maxReplicas"`
-	EvaluationIntervalSeconds int32 `json:"evaluationIntervalSeconds"`
-	Enabled     bool            `json:"enabled"`
-	Behavior    *BehaviorSpec   `json:"behavior,omitempty"` // optional advanced behavior
+	TargetRef                 TargetRefSpec `json:"targetRef"`
+	Metric                    MetricSpec    `json:"metric"`
+	ScaleUp                   ScaleAction   `json:"scaleUp"`
+	ScaleDown                 ScaleAction   `json:"scaleDown"`
+	MinReplicas               int32         `json:"minReplicas"`
+	MaxReplicas               int32         `json:"maxReplicas"`
+	EvaluationIntervalSeconds int32         `json:"evaluationIntervalSeconds,omitempty"`
+	Enabled                   bool          `json:"enabled,omitempty"`
+	Behavior                  *BehaviorSpec `json:"behavior,omitempty"`
 }
 
 // TargetRefSpec tells which deployment to scale
@@ -36,9 +36,9 @@ type TargetRefSpec struct {
 // MetricSpec defines what metric to watch
 type MetricSpec struct {
 	Name       string  `json:"name"`
-	Type       string  `json:"type"`
+	Type       string  `json:"type,omitempty"`
 	Query      string  `json:"query,omitempty"`
-	Threshold  int32   `json:"threshold"`
+	Threshold  float64 `json:"threshold"`
 	TargetType string  `json:"targetType,omitempty"`
 }
 
@@ -71,12 +71,12 @@ type BehaviorSpec struct {
 
 // ScalePolicyStatus reflects observed state
 type ScalePolicyStatus struct {
-	LastReconcileTime *metav1.Time      `json:"lastReconcileTime,omitempty"`
-	LastScaleTime     *metav1.Time      `json:"lastScaleTime,omitempty"`
-	CurrentReplicas   int32             `json:"currentReplicas"`
-	DesiredReplicas   int32             `json:"desiredReplicas"`
+	LastReconcileTime *metav1.Time       `json:"lastReconcileTime,omitempty"`
+	LastScaleTime     *metav1.Time       `json:"lastScaleTime,omitempty"`
+	CurrentReplicas   int32              `json:"currentReplicas"`
+	DesiredReplicas   int32              `json:"desiredReplicas"`
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
-	LastMetricValues  map[string]int32   `json:"lastMetricValues,omitempty"`
+	LastMetricValues  map[string]float64 `json:"lastMetricValues,omitempty"`
 }
 
 // +kubebuilder:object:root=true
