@@ -11,7 +11,7 @@ The codebase is now aligned around one `ScalePolicy` contract, has runnable entr
 
 ## What The Project Does
 
-![KubeHalo Architecture](./docs/architecture/kubehalo-architecture.png)
+![KubeHalo Architecture](./docs/architecture/Kubehalo-architecture.png)
 
 Each `ScalePolicy` points at a workload, defines the metric query to evaluate, and describes how aggressively KubeHalo may scale up or down.
 
