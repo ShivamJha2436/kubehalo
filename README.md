@@ -134,6 +134,7 @@ Useful commands:
 
 ```bash
 make fmt
+make lint
 make test
 make run-controller
 make run-api
