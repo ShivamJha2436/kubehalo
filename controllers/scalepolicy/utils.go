@@ -5,6 +5,7 @@ import (
 	"math"
 
 	kubehalov1 "github.com/ShivamJha2436/kubehalo/api/kubehalo/v1"
+	"github.com/ShivamJha2436/kubehalo/internal/validation"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -29,28 +30,7 @@ func ParseScalePolicy(u *unstructured.Unstructured) (*kubehalov1.ScalePolicy, er
 
 // ValidateScalePolicy performs lightweight runtime validation for controller use.
 func ValidateScalePolicy(policy *kubehalov1.ScalePolicy) error {
-	switch {
-	case policy.Spec.TargetRef.Kind == "":
-		return fmt.Errorf("spec.targetRef.kind must not be empty")
-	case policy.Spec.TargetRef.Name == "":
-		return fmt.Errorf("spec.targetRef.name must not be empty")
-	case policy.Spec.TargetRef.Namespace == "":
-		return fmt.Errorf("spec.targetRef.namespace must not be empty")
-	case policy.Spec.Metric.Query == "":
-		return fmt.Errorf("spec.metric.query must not be empty")
-	case policy.Spec.Metric.Threshold <= 0:
-		return fmt.Errorf("spec.metric.threshold must be greater than zero")
-	case policy.Spec.MinReplicas <= 0:
-		return fmt.Errorf("spec.minReplicas must be greater than zero")
-	case policy.Spec.MaxReplicas < policy.Spec.MinReplicas:
-		return fmt.Errorf("spec.maxReplicas must be greater than or equal to spec.minReplicas")
-	case policy.Spec.ScaleUp.Step <= 0:
-		return fmt.Errorf("spec.scaleUp.step must be greater than zero")
-	case policy.Spec.ScaleDown.Step <= 0:
-		return fmt.Errorf("spec.scaleDown.step must be greater than zero")
-	}
-
-	return nil
+	return validation.ValidateScalePolicy(policy)
 }
 
 // CalculateReplicas decides the new replica count based on a metric value and threshold.

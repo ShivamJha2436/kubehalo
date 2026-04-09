@@ -70,6 +70,27 @@ spec:
                   type: integer
                 maxReplicas:
                   type: integer
+                schedules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      days:
+                        type: array
+                        items:
+                          type: string
+                          enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                      startTime:
+                        type: string
+                      endTime:
+                        type: string
+                      minReplicas:
+                        type: integer
+                      maxReplicas:
+                        type: integer
+                    required: ["days", "startTime", "endTime"]
                 behavior:
                   type: object
                   properties:

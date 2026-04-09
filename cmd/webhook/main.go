@@ -6,14 +6,19 @@ import (
 	"net/http"
 
 	"github.com/ShivamJha2436/kubehalo/internal/config"
+	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 	"github.com/ShivamJha2436/kubehalo/internal/webhook"
 )
 
 func main() {
 	cfg := config.LoadWebhookConfig()
+	promClient, err := metrics.NewPrometheusClient(cfg.PrometheusAddress)
+	if err != nil {
+		log.Fatalf("failed to create Prometheus client: %v", err)
+	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/validate", webhook.Serve)
+	mux.HandleFunc("/validate", webhook.NewHandler(webhook.NewValidator(promClient)))
 
 	server := &http.Server{
 		Addr:      cfg.Address,

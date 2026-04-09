@@ -24,9 +24,10 @@ type ControllerConfig struct {
 
 // WebhookConfig defines the admission webhook runtime configuration.
 type WebhookConfig struct {
-	Address  string
-	CertFile string
-	KeyFile  string
+	Address           string
+	CertFile          string
+	KeyFile           string
+	PrometheusAddress string
 }
 
 // LoadAPIConfig reads the API configuration from the environment.
@@ -46,9 +47,10 @@ func LoadControllerConfig() ControllerConfig {
 // LoadWebhookConfig reads the webhook configuration from the environment.
 func LoadWebhookConfig() WebhookConfig {
 	return WebhookConfig{
-		Address:  getEnv("KUBEHALO_WEBHOOK_ADDR", defaultWebhookAddress),
-		CertFile: getEnv("KUBEHALO_WEBHOOK_CERT_FILE", defaultWebhookCertFile),
-		KeyFile:  getEnv("KUBEHALO_WEBHOOK_KEY_FILE", defaultWebhookKeyFile),
+		Address:           getEnv("KUBEHALO_WEBHOOK_ADDR", defaultWebhookAddress),
+		CertFile:          getEnv("KUBEHALO_WEBHOOK_CERT_FILE", defaultWebhookCertFile),
+		KeyFile:           getEnv("KUBEHALO_WEBHOOK_KEY_FILE", defaultWebhookKeyFile),
+		PrometheusAddress: getEnv("KUBEHALO_PROMETHEUS_ADDR", defaultPrometheusAddress),
 	}
 }
 

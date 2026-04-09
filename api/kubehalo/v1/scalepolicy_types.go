@@ -14,15 +14,16 @@ var (
 
 // ScalePolicySpec defines the desired state
 type ScalePolicySpec struct {
-	TargetRef                 TargetRefSpec `json:"targetRef"`
-	Metric                    MetricSpec    `json:"metric"`
-	ScaleUp                   ScaleAction   `json:"scaleUp"`
-	ScaleDown                 ScaleAction   `json:"scaleDown"`
-	MinReplicas               int32         `json:"minReplicas"`
-	MaxReplicas               int32         `json:"maxReplicas"`
-	EvaluationIntervalSeconds int32         `json:"evaluationIntervalSeconds,omitempty"`
-	Enabled                   bool          `json:"enabled,omitempty"`
-	Behavior                  *BehaviorSpec `json:"behavior,omitempty"`
+	TargetRef                 TargetRefSpec  `json:"targetRef"`
+	Metric                    MetricSpec     `json:"metric"`
+	ScaleUp                   ScaleAction    `json:"scaleUp"`
+	ScaleDown                 ScaleAction    `json:"scaleDown"`
+	MinReplicas               int32          `json:"minReplicas"`
+	MaxReplicas               int32          `json:"maxReplicas"`
+	EvaluationIntervalSeconds int32          `json:"evaluationIntervalSeconds,omitempty"`
+	Enabled                   bool           `json:"enabled,omitempty"`
+	Schedules                 []ScheduleSpec `json:"schedules,omitempty"`
+	Behavior                  *BehaviorSpec  `json:"behavior,omitempty"`
 }
 
 // TargetRefSpec tells which deployment to scale
@@ -46,6 +47,16 @@ type MetricSpec struct {
 type ScaleAction struct {
 	Step            int32 `json:"step"`
 	CooldownSeconds int32 `json:"cooldownSeconds"`
+}
+
+// ScheduleSpec defines an optional time-based scaling window.
+type ScheduleSpec struct {
+	Name        string   `json:"name,omitempty"`
+	Days        []string `json:"days"`
+	StartTime   string   `json:"startTime"`
+	EndTime     string   `json:"endTime"`
+	MinReplicas int32    `json:"minReplicas,omitempty"`
+	MaxReplicas int32    `json:"maxReplicas,omitempty"`
 }
 
 // BehaviourSpec defines advanced scaling behaviour (optional)

@@ -20,6 +20,13 @@ spec:
     cooldownSeconds: 120
   minReplicas: 1
   maxReplicas: 10
+  schedules:
+    - name: weekday-business-hours
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"]
+      startTime: "09:00"
+      endTime: "18:00"
+      minReplicas: 3
+      maxReplicas: 10
   behavior:
     stabilizationWindowSeconds: 60
     maxScaleUpRate: 2
