@@ -4,39 +4,73 @@ import (
 	"fmt"
 	"math"
 
+	kubehalov1 "github.com/ShivamJha2436/kubehalo/api/kubehalo/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// GetNestedString fetches a nested string from an Unstructured object, e.g. ("spec","targetRef","name")
-func GetNestedString(u *unstructured.Unstructured, fields ...string) (string, error) {
-	val, found, err := unstructured.NestedString(u.Object, fields...)
-	if err != nil {
-		return "", err
+// ParseScalePolicy converts an unstructured CR into the typed API model.
+func ParseScalePolicy(u *unstructured.Unstructured) (*kubehalov1.ScalePolicy, error) {
+	var policy kubehalov1.ScalePolicy
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &policy); err != nil {
+		return nil, fmt.Errorf("convert ScalePolicy: %w", err)
 	}
-	if !found {
-		return "", fmt.Errorf("field %v not found", fields)
+
+	if err := ValidateScalePolicy(&policy); err != nil {
+		return nil, err
 	}
-	return val, nil
-}
-// for metrics like threshold
-func GetNestedFloat64(u *unstructured.Unstructured, fields ...string) (float64, error) {
-	val, found, err := unstructured.NestedFloat64(u.Object, fields...)
-	if err != nil {
-		return 0, err
+
+	if policy.Namespace == "" {
+		policy.Namespace = policy.Spec.TargetRef.Namespace
 	}
-	if !found {
-		return 0, fmt.Errorf("field %v not found", fields)
-	}
-	return val, nil
+
+	return &policy, nil
 }
 
-// CalculateReplicas decides new replica count based on metric value and threshold
+// ValidateScalePolicy performs lightweight runtime validation for controller use.
+func ValidateScalePolicy(policy *kubehalov1.ScalePolicy) error {
+	switch {
+	case policy.Spec.TargetRef.Kind == "":
+		return fmt.Errorf("spec.targetRef.kind must not be empty")
+	case policy.Spec.TargetRef.Name == "":
+		return fmt.Errorf("spec.targetRef.name must not be empty")
+	case policy.Spec.TargetRef.Namespace == "":
+		return fmt.Errorf("spec.targetRef.namespace must not be empty")
+	case policy.Spec.Metric.Query == "":
+		return fmt.Errorf("spec.metric.query must not be empty")
+	case policy.Spec.Metric.Threshold <= 0:
+		return fmt.Errorf("spec.metric.threshold must be greater than zero")
+	case policy.Spec.MinReplicas <= 0:
+		return fmt.Errorf("spec.minReplicas must be greater than zero")
+	case policy.Spec.MaxReplicas < policy.Spec.MinReplicas:
+		return fmt.Errorf("spec.maxReplicas must be greater than or equal to spec.minReplicas")
+	case policy.Spec.ScaleUp.Step <= 0:
+		return fmt.Errorf("spec.scaleUp.step must be greater than zero")
+	case policy.Spec.ScaleDown.Step <= 0:
+		return fmt.Errorf("spec.scaleDown.step must be greater than zero")
+	}
+
+	return nil
+}
+
+// CalculateReplicas decides the new replica count based on a metric value and threshold.
 func CalculateReplicas(currentReplicas int32, metricValue, threshold float64, scaleUpStep, scaleDownStep int32) int32 {
 	if metricValue > threshold {
 		return currentReplicas + scaleUpStep
-	} else if metricValue < threshold {
-		// minimum 1 replica
+	}
+	if metricValue < threshold {
 		return int32(math.Max(1, float64(currentReplicas-scaleDownStep)))
 	}
 	return currentReplicas
+}
+
+// ClampReplicas enforces min/max limits on the desired replica count.
+func ClampReplicas(replicas, minReplicas, maxReplicas int32) int32 {
+	if replicas < minReplicas {
+		return minReplicas
+	}
+	if replicas > maxReplicas {
+		return maxReplicas
+	}
+	return replicas
 }

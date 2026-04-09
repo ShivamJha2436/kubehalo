@@ -4,7 +4,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/ShivamJha2436/kubehalo/internal/metrics"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -12,35 +11,47 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// ScalePolicyGVR defines the Group/Version/Resource for the CRD
+const defaultInformerResync = 30 * time.Second
+
+// ScalePolicyGVR defines the Group/Version/Resource for the CRD.
 var ScalePolicyGVR = schema.GroupVersionResource{
 	Group:    "kubehalo.sh",
 	Version:  "v1",
 	Resource: "scalepolicies",
 }
 
-// Controller manages the informer and event handlers
+// EventHandler describes the callbacks used by the controller.
+type EventHandler interface {
+	OnAdd(obj interface{})
+	OnUpdate(oldObj, newObj interface{})
+	OnDelete(obj interface{})
+}
+
+// Controller manages the informer and event handlers.
 type Controller struct {
 	factory  dynamicinformer.DynamicSharedInformerFactory
-	handler  *Handler
+	handler  EventHandler
 	informer cache.SharedIndexInformer
 }
 
-// NewController creates a Controller instance
-func NewController(dynamicClient dynamic.Interface, kubeClient *kubernetes.Clientset, promClient *metrics.PrometheusClient) *Controller {
-	factory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 30*time.Second)
-
-	ctrl := &Controller{
-		factory:  factory,
-		handler:  NewHandler(kubeClient, promClient),
-		informer: factory.ForResource(ScalePolicyGVR).Informer(),
-	}
-	return ctrl
+// NewController creates a controller instance with the default handler.
+func NewController(dynamicClient dynamic.Interface, kubeClient kubernetes.Interface, promClient PromClientInterface) *Controller {
+	return NewControllerWithHandler(dynamicClient, NewHandler(kubeClient, promClient), defaultInformerResync)
 }
 
-// Run starts the informer loop
+// NewControllerWithHandler creates a controller with a custom event handler.
+func NewControllerWithHandler(dynamicClient dynamic.Interface, handler EventHandler, resyncPeriod time.Duration) *Controller {
+	factory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, resyncPeriod)
+
+	return &Controller{
+		factory:  factory,
+		handler:  handler,
+		informer: factory.ForResource(ScalePolicyGVR).Informer(),
+	}
+}
+
+// Run starts the informer loop.
 func (c *Controller) Run(stopCh <-chan struct{}) {
-	// Register event handlers
 	c.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			log.Println("[controller] Add event received for ScalePolicy")
@@ -56,11 +67,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		},
 	})
 
-	// Start informer factory
 	log.Println("[controller] Starting informer...")
 	c.factory.Start(stopCh)
 
-	// Wait for caches to sync
 	if !cache.WaitForCacheSync(stopCh, c.informer.HasSynced) {
 		log.Println("[controller] Failed to sync caches.")
 		return

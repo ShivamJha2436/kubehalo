@@ -10,8 +10,8 @@ spec:
     namespace: default
   metric:
     name: up-metric
-    query: 'up'
-    threshold: 0
+    query: "up"
+    threshold: 0.5
   minReplicas: 1
   maxReplicas: 5
   scaleUp:

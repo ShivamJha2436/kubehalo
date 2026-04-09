@@ -3,11 +3,18 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	"time"
 )
+
+// Client describes the metric query behavior used by the controller.
+type Client interface {
+	QueryMetric(query string) (float64, error)
+}
 
 type PrometheusClient struct {
 	client v1.API
@@ -32,7 +39,7 @@ func (p *PrometheusClient) QueryMetric(query string) (float64, error) {
 		return 0, err
 	}
 	if len(warnings) > 0 {
-		fmt.Println("Prometheus warnings:", warnings)
+		log.Printf("[metrics] Prometheus warnings: %v", warnings)
 	}
 
 	// Extract the value (assumes scalar result)

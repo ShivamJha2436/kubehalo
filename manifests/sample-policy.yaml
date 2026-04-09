@@ -20,3 +20,8 @@ spec:
     cooldownSeconds: 120
   minReplicas: 1
   maxReplicas: 10
+  behavior:
+    stabilizationWindowSeconds: 60
+    maxScaleUpRate: 2
+    maxScaleDownRate: 1
+    policy: absolute
