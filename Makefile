@@ -5,10 +5,16 @@ GOCACHE ?= $(CURDIR)/.cache/go-build
 export GOMODCACHE
 export GOCACHE
 
-.PHONY: fmt test run-controller run-api run-webhook
+.PHONY: fmt lint test run-controller run-api run-webhook
 
 fmt:
 	$(GO) fmt ./...
+
+lint:
+	@files="$$(git ls-files '*.go')"; \
+	unformatted="$$(gofmt -l $$files)"; \
+	test -z "$$unformatted" || (echo "The following files need gofmt:" && echo "$$unformatted" && exit 1)
+	$(GO) vet ./...
 
 test:
 	$(GO) test ./...
